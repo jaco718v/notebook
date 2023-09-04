@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Button, StyleSheet, Text, TextInput, View, FlatList } from 'react-native';
-import { useState, useEffect } from 'react' 
+import { useState } from 'react' 
 
 let nextId = 0
 
@@ -32,7 +32,7 @@ const Page1 = ({navigation, route}) => {
   if(savedData != null && savedData.status == true){
     savedData.status = false
     const filteredArr = [...list.filter((note) => note.id != savedData.id )]
-    newArr.splice(savedData.id, 0, {id:savedData.id, title: savedData.title, text: savedData.text})
+    filteredArr.splice(savedData.id, 0, {id:savedData.id, title: savedData.title, text: savedData.text})
     editList([...filteredArr])
   }
     
