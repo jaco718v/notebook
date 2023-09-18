@@ -1,14 +1,16 @@
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Button, StyleSheet, Text, TextInput, View, FlatList, TouchableOpacity } from 'react-native';
+import { Button, StyleSheet, Text, TextInput, View, FlatList, TouchableOpacity, Image } from 'react-native';
 import { useState } from 'react' ;
 import { doc, setDoc, collection, addDoc, getDocs, updateDoc, deleteDoc } from "firebase/firestore";
-import { db } from './components/config'
+import { db, storage } from './components/config'
+import * as ImagePicker from "expo-image-picker"
+import { ref, uploadBytes, getDownloadURL, deleteObject} from "firebase/storage"
 
 let nextId = 0
 let isDataLoaded = false
-
+let isImgDownloadFlag = false
 
 
 
@@ -34,6 +36,7 @@ export default function App() {
 
 const Page1 = ({navigation, route}) => {
   const savedData = route.params?.savedData
+  isImgDownloadFlag = false
   const [list, editList] = useState([])
   const [deleteFlag, setFlag] = useState(false);
   
@@ -69,6 +72,9 @@ const Page1 = ({navigation, route}) => {
   }
 
   async function updateNote(data){
+    if(!data.text){
+      data.text = ""
+    }
     await updateDoc(doc(db, "notes", String(data.id)), {
       title: data.title,
       text: data.text
@@ -144,7 +150,50 @@ const Page1 = ({navigation, route}) => {
 const Page2 = ({navigation, route}) => {
   const noteData = route.params?.noteData 
   const savedData = {id:noteData.id, title:noteData.title, status:true}
-  
+  const [imagePath, setImagePath] = useState(null)
+  if(!isImgDownloadFlag){
+    isImgDownloadFlag = true
+    downloadImage()
+  }
+
+  async function launchImagePicker(){
+    let result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true
+    })
+    if(!result.canceled){
+      setImagePath(result.assets[0].uri)
+    }
+  }
+
+  async function deletePrevImg(){
+    const delRef = ref(storage, `imageFor${noteData.id}.jpg`)
+    await deleteObject(delRef).then(() => {
+    }).catch((error) => {
+      console.log(error)
+    })
+  }
+
+  async function uploadImage(){
+    await deletePrevImg()
+    const res = await fetch(imagePath)
+    const blob = await res.blob()
+    const storageRef = ref(storage,`imageFor${noteData.id}.jpg`)
+    uploadBytes(storageRef, blob).then((snapshot) => {
+      alert("image uploaded")
+    })
+  }
+
+  async function downloadImage(){
+    getDownloadURL(ref(storage, `imageFor${noteData.id}.jpg`))
+    .then((url) => {setImagePath(url)
+    }).catch((error) => {
+      console.log("fejl i image dowload " + error)
+    })
+
+  }
+
+
+
   return (
     <View style={styles.container}>
 
@@ -160,6 +209,22 @@ const Page2 = ({navigation, route}) => {
         style={styles.textInput}
         onChangeText={(txt) => savedData.text = txt}
         placeholder='Write notes here'/>
+
+      <View style={styles.imageContainer} >
+        <Image style={styles.image} source={{uri:imagePath}}/>
+      </View>
+
+      <Button
+        color={"grey"}
+        title='Pick image'
+        onPress={launchImagePicker}
+      />
+
+      <Button
+        color={"green"}
+        title='Upload image'
+        onPress={uploadImage}
+      />
 
       <Button
         color={"black"}
@@ -213,5 +278,14 @@ const styles = StyleSheet.create({
   },
   backgroundText:{
     color:"white"
+  },
+  image:{
+    width:200,
+    height:200,
+    marginBottom: 10
+  },
+  imageContainer:{
+    justifyContent:"center",
+    alignItems: "center",
   }
    });
